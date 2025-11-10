@@ -98,4 +98,3 @@ The design uses a primary color scheme that can be customized in `tailwind.confi
 ## License
 
 MIT
-
