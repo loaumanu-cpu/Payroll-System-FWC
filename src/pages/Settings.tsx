@@ -1,4 +1,4 @@
-import { Save, Building2, DollarSign, Calendar, Bell, Shield } from 'lucide-react'
+import { Save, Building2, DollarSign, Bell, Shield } from 'lucide-react'
 
 export default function Settings() {
   const settingsSections = [
