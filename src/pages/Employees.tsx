@@ -1,5 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, Search, MoreVertical, Edit, Trash2, Mail, Phone } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import Modal from '../components/Modal'
+import { loadFromStorage, saveToStorage } from '../lib/storage'
 
 interface Employee {
   id: number
@@ -12,67 +17,91 @@ interface Employee {
   status: 'Active' | 'Inactive'
 }
 
+const employeeSchema = z.object({
+  name: z.string().min(2, 'Name is required'),
+  email: z.string().email('Valid email required'),
+  phone: z.string().min(7, 'Phone required'),
+  department: z.string().min(1, 'Department required'),
+  position: z.string().min(1, 'Position required'),
+  salary: z.string().min(1, 'Salary required'),
+  status: z.enum(['Active', 'Inactive']),
+})
+
+type EmployeeForm = z.infer<typeof employeeSchema>
+
 export default function Employees() {
-  const [employees] = useState<Employee[]>([
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@company.com',
-      phone: '+1 (555) 123-4567',
-      department: 'Engineering',
-      position: 'Senior Developer',
-      salary: '$95,000',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'Michael Chen',
-      email: 'michael.chen@company.com',
-      phone: '+1 (555) 234-5678',
-      department: 'Marketing',
-      position: 'Marketing Manager',
-      salary: '$85,000',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Emily Davis',
-      email: 'emily.davis@company.com',
-      phone: '+1 (555) 345-6789',
-      department: 'Sales',
-      position: 'Sales Director',
-      salary: '$110,000',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'David Wilson',
-      email: 'david.wilson@company.com',
-      phone: '+1 (555) 456-7890',
-      department: 'HR',
-      position: 'HR Manager',
-      salary: '$75,000',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      name: 'Jessica Martinez',
-      email: 'jessica.martinez@company.com',
-      phone: '+1 (555) 567-8901',
-      department: 'Finance',
-      position: 'Financial Analyst',
-      salary: '$70,000',
-      status: 'Active',
-    },
-  ])
+  const [employees, setEmployees] = useState<Employee[]>(
+    loadFromStorage<Employee[]>('employees', [])
+  )
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
 
   const [searchTerm, setSearchTerm] = useState('')
 
-  const filteredEmployees = employees.filter(employee =>
+  useEffect(() => {
+    saveToStorage('employees', employees)
+  }, [employees])
+
+  const filteredEmployees = useMemo(() => employees.filter(employee =>
     employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     employee.department.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  ), [employees, searchTerm])
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<EmployeeForm>({
+    resolver: zodResolver(employeeSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      position: '',
+      salary: '',
+      status: 'Active',
+    }
+  })
+
+  function openCreate() {
+    setEditingEmployee(null)
+    reset({
+      name: '',
+      email: '',
+      phone: '',
+      department: '',
+      position: '',
+      salary: '',
+      status: 'Active',
+    })
+    setModalOpen(true)
+  }
+
+  function openEdit(emp: Employee) {
+    setEditingEmployee(emp)
+    reset({
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      department: emp.department,
+      position: emp.position,
+      salary: emp.salary,
+      status: emp.status,
+    })
+    setModalOpen(true)
+  }
+
+  function onSubmit(data: EmployeeForm) {
+    if (editingEmployee) {
+      setEmployees(prev => prev.map(e => e.id === editingEmployee.id ? { ...editingEmployee, ...data } : e))
+    } else {
+      const nextId = employees.length ? Math.max(...employees.map(e => e.id)) + 1 : 1
+      setEmployees(prev => [...prev, { id: nextId, ...data }])
+    }
+    setModalOpen(false)
+  }
+
+  function deleteEmployee(id: number) {
+    setEmployees(prev => prev.filter(e => e.id !== id))
+  }
 
   return (
     <div className="space-y-6">
@@ -81,7 +110,7 @@ export default function Employees() {
           <h1 className="text-3xl font-bold text-gray-900">Employees</h1>
           <p className="text-gray-600 mt-1">Manage your employee database</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
           Add Employee
         </button>
@@ -183,10 +212,10 @@ export default function Employees() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                      <button onClick={() => openEdit(employee)} className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button onClick={() => deleteEmployee(employee.id)} className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
@@ -222,6 +251,59 @@ export default function Employees() {
           </button>
         </div>
       </div>
+
+      <Modal
+        title={editingEmployee ? 'Edit Employee' : 'Add Employee'}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        footer={
+          <div className="flex items-center justify-end gap-3">
+            <button className="btn-secondary" onClick={() => setModalOpen(false)}>Cancel</button>
+            <button className="btn-primary" onClick={handleSubmit(onSubmit)}>Save</button>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input className="input-field" {...register('name')} />
+            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input className="input-field" type="email" {...register('email')} />
+            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <input className="input-field" {...register('phone')} />
+            {errors.phone && <p className="text-xs text-red-600 mt-1">{errors.phone.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+            <input className="input-field" {...register('department')} />
+            {errors.department && <p className="text-xs text-red-600 mt-1">{errors.department.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+            <input className="input-field" {...register('position')} />
+            {errors.position && <p className="text-xs text-red-600 mt-1">{errors.position.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
+            <input className="input-field" {...register('salary')} />
+            {errors.salary && <p className="text-xs text-red-600 mt-1">{errors.salary.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select className="input-field" {...register('status')}>
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+            {errors.status && <p className="text-xs text-red-600 mt-1">{errors.status.message}</p>}
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
