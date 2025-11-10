@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+    <script>
+      // GitHub Pages SPA fallback:
+      // Serve the app for any unknown path so React Router can handle it.
+      (function() {
+        var base = "/Payroll-System-FWC/";
+        // If we're already at the base index, do nothing.
+        if (location.pathname === base || location.pathname === base + "index.html") return;
+        // Redirect to the SPA entry keeping the original path as hash for client routing if needed.
+        var target = base + "#!" + location.pathname.replace(base, "") + location.search + location.hash;
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>
+
+
