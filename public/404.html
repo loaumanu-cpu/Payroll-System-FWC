@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Redirecting...</title>
+    <script>
+      (function () {
+        var base = "/Payroll-System-FWC/";
+        if (location.pathname === base || location.pathname === base + "index.html") return;
+        var relativePath = location.pathname.replace(base, "");
+        var target = base + "#!/" + relativePath + location.search + location.hash;
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    Redirecting...
+  </body>
+</html>
+
